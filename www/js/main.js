@@ -8272,6 +8272,11 @@ function readProgram21( program ) {
 	newdata.stations = program[ 4 ];
 	newdata.name = program[ 5 ];
 
+	var hasAcc = program.length > 8;
+	newdata.threshold = hasAcc? program[ 6 ] : 0;
+	newdata.accumulated = hasAcc? program[ 7 ]: 0;
+	newdata.rain_equiv = hasAcc? program[ 8 ]: 0;
+
 	if ( startType === 0 ) {
 		newdata.start = program[ 3 ][ 0 ];
 		newdata.repeat = program[ 3 ][ 1 ];
@@ -8672,6 +8677,22 @@ function makeProgram21( n, isCopy ) {
 	// Close program type group
 	list += "</div></div>";
 
+	// Group all accumulation options visually
+	list += "<div style='margin-top:10px' class='ui-corner-all'>";
+	list += "<div class='ui-bar ui-bar-a'><h3>" + _( "Accumulation" ) + "</h3></div>";
+	list += "<div class='ui-body ui-body-a'>";
+	// Show accumulation options
+	list += "<div id='input_accumulation_n-" + id + "' class='ui-grid-a'>";
+	list += "<div class='ui-block-a'><label class='center' for='every-" + id + "'>" + _( "Threshold (%)" ) + "</label>" +
+		"<input data-wrapper-class='pad_buttons' data-mini='true' type='number' name='threshold-" + id + "' pattern='[0-9]*' " +
+			"id='threshold-" + id + "' value='" + program.threshold + "'></div>";
+	list += "<div class='ui-block-b'><label class='center' for='starting-" + id + "'>" + _( "Accumulated (%)" ) + "</label>" +
+		"<input data-wrapper-class='pad_buttons' data-mini='true' type='number' name='accumulated-" + id + "' pattern='[0-9]*' " +
+			"id='accumulated-" + id + "' value='" + program.accumulated + "'></div>";
+	list += "</div>";
+	// Close the Accumulation group
+	list += "</div></div>";
+
 	// Group all stations visually
 	list += "<div style='margin-top:10px' class='ui-corner-all'>";
 	list += "<div class='ui-bar ui-bar-a'><h3>" + _( "Stations" ) + "</h3></div>";
@@ -8988,6 +9009,8 @@ function submitProgram21( id, ignoreWarning ) {
 	var program = [],
 		days = [ 0, 0 ],
 		start = [ 0, 0, 0, 0 ],
+		threshold = 0,
+		accumulated = 0,
 		stationSelected = 0,
 		en = ( $( "#en-" + id ).is( ":checked" ) ) ? 1 : 0,
 		weather = ( $( "#uwt-" + id ).is( ":checked" ) ) ? 1 : 0,
@@ -9039,6 +9062,17 @@ function submitProgram21( id, ignoreWarning ) {
 		}
 	}
 
+	threshold = parseInt( $("#threshold-" + id).val(), 10);
+	accumulated = parseInt( $("#accumulated-" + id).val(), 10);
+
+	threshold = Math.max(threshold, 0);
+	if ( threshold > 10000 ) {
+		showerror( _( "Error: Threshold limit is 10000%." ) );
+		return;
+	}
+	accumulated = Math.max(accumulated, 0);
+	accumulated = Math.min(accumulated, threshold+1);
+
 	// Set program start time type
 	if ( $( "#stype_repeat-" + id ).is( ":checked" ) ) {
 		j |= ( 0 << 6 );
@@ -9077,6 +9111,10 @@ function submitProgram21( id, ignoreWarning ) {
 	program[ 2 ] = days[ 1 ];
 	program[ 3 ] = start;
 	program[ 4 ] = runTimes;
+	program[ 5 ] = "";         // not used in cp, but this is where name appears
+	program[ 6 ] = threshold;
+	program[ 7 ] = accumulated;
+	program[ 8 ] = 0;
 
 	name = $( "#name-" + id ).val();
 	url = "&v=" + JSON.stringify( program ) + "&name=" + encodeURIComponent( name );
